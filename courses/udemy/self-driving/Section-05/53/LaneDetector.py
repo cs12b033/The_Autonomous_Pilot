@@ -8,10 +8,19 @@ import numpy as np
 
 
 class LaneDetector:
-    def __init__(self):
-        print("LaneDetector obj created")
+    """
+    Description: LaneDetector is a basic lane detection library (for images and
+    videos) which can detect imminent lanes for each frame in almost real-time
+    Notes: Libraris needed `cv2` and `numpy as np`
+    """
 
-    def make_points(self, image, line):
+    def __init__(self):
+        """Summary
+        """
+        self._videoExtensionList = ["mp4", "avi", "mkv", "wmv"]
+        self._imageExtensionList = ["jpg", "png", "jpeg"]
+
+    def _make_points(self, image, line):
         """Summary
 
         Args:
@@ -28,7 +37,7 @@ class LaneDetector:
         x2 = int((y2 - intercept) / slope)
         return [[x1, y1, x2, y2]]
 
-    def average_slope_intercept(self, image, lines):
+    def _average_slope_intercept(self, image, lines):
         """Summary
 
         Args:
@@ -54,12 +63,12 @@ class LaneDetector:
         # add more weight to longer lines
         left_fit_average = np.average(left_fit, axis=0)
         right_fit_average = np.average(right_fit, axis=0)
-        left_line = self.make_points(image, left_fit_average)
-        right_line = self.make_points(image, right_fit_average)
+        left_line = self._make_points(image, left_fit_average)
+        right_line = self._make_points(image, right_fit_average)
         averaged_lines = [left_line, right_line]
         return averaged_lines
 
-    def canny(self, img):
+    def _getCannyImage(self, img):
         """Summary
 
         Args:
@@ -74,7 +83,7 @@ class LaneDetector:
         canny = cv2.Canny(gray, 50, 150)
         return canny
 
-    def display_lines(self, img, lines):
+    def _display_lines(self, img, lines):
         """Summary
 
         Args:
@@ -91,7 +100,7 @@ class LaneDetector:
                     cv2.line(line_image, (x1, y1), (x2, y2), (255, 0, 0), 10)
         return line_image
 
-    def region_of_interest(self, img):
+    def _region_of_interest(self, img):
         """Summary
 
         Args:
@@ -113,7 +122,7 @@ class LaneDetector:
         masked_image = cv2.bitwise_and(img, mask)
         return masked_image
 
-    def putLane(self, frame):
+    def _putLane(self, frame):
         """Summary
 
         Args:
@@ -122,37 +131,66 @@ class LaneDetector:
         Returns:
             TYPE: Description
         """
-        canny_image = self.canny(frame)
-        cropped_canny = self.region_of_interest(canny_image)
-        lines = cv2.HoughLinesP(cropped_canny, 2, np.pi / 180, 100, np.array([]), minLineLength=40, maxLineGap=5)
-        averaged_lines = self.average_slope_intercept(frame, lines)
-        line_image = self.display_lines(frame, averaged_lines)
+        canny_image = self._getCannyImage(frame)
+        cropped_canny = self._region_of_interest(canny_image)
+        lines = cv2.HoughLinesP(
+            cropped_canny, 2, np.pi / 180, 100, np.array([]),
+            minLineLength=40, maxLineGap=5)
+        averaged_lines = self._average_slope_intercept(frame, lines)
+        line_image = self._display_lines(frame, averaged_lines)
         combo_image = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
         return combo_image
 
-    def imageLaneDetect(self, imageFile):
+    def _imageLaneDetect(self, fileName):
         """Summary
 
         Returns:
             TYPE: Description
+
+        Args:
+            fileName (TYPE): Description
         """
-        image = cv2.imread(imageFile)
-        cv2.imshow("image result", self.putLane(np.copy(image)))
+        image = cv2.imread(fileName)
+        cv2.imshow("image result", self._putLane(np.copy(image)))
         if cv2.waitKey(0) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
         return
 
-    def videoLaneDetect(self, videoFile):
+    def _videoLaneDetect(self, fileName):
         """Summary
 
         Returns:
             TYPE: Description
+
+        Args:
+            fileName (TYPE): Description
         """
-        cap = cv2.VideoCapture(videoFile)
+        cap = cv2.VideoCapture(fileName)
         while(cap.isOpened()):
-            cv2.imshow("video result", self.putLane(cap.read()[1]))
+            cv2.imshow("video result", self._putLane(cap.read()[1]))
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         cap.release()
         cv2.destroyAllWindows()
+        return
+
+    def detectLane(self, fileName):
+        """Summary
+            This program will process input file and display lanes detected \
+            on a window
+
+        Args:
+            fileName (string): path of image/video file where lane needs to
+            be detected
+
+        Returns:
+            Nothing
+        """
+        fileExt = fileName.split('.')[-1].lower()
+        if fileExt in self._videoExtensionList:
+            self._videoLaneDetect(fileName)
+        elif fileExt in self._imageExtensionList:
+            self._imageLaneDetect(fileName)
+        else:
+            print("File type unknown")
         return
